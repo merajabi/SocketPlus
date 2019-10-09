@@ -239,7 +239,7 @@ bool Socket::RecvFrom(std::string& buffer, int recvbuflen){
 	}
 	if( sockGuard->get_status() & socket_guard::NORD ) {
 		fprintf( stderr,"Invalid Operation Recv Not Possible: %d\n", sockGuard->get_status());
-		return false;
+		//return false;
 	}
 
 	struct sockaddr         *sadr	 = NULL;

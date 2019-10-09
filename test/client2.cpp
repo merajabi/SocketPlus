@@ -29,36 +29,16 @@ int main(int argc, char **argv) {
 		c.Open();
 		
 		c.SetTimeout(5*1000);
-		std::string str(" \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. this is a test. this is a test. \
-		this is a test. this is a test. ");
-		
-		//std::string str("this is a test.");
-
+		std::string str(1000,'x');
 		std::cout << str.size() << std::endl;
+
 		c.Send(str);
-		c.ShutDown(SHUT_RDWR);
+		c.ShutDown(SHUT_WR);
 
-		sleep(2);
 		std::string res;
-		c.Recv(res,9); //9
-		//c.Close();
-
+		c.Recv(res,10); //9
 		std::cout << res.size() << std::endl;
-		
+		//c.Close();	
 	}
 	return 0;
 };

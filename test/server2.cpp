@@ -13,12 +13,12 @@ int connections=0;
 void Handel(Socket& sp){
 	sp.SetTimeout(2*1000);
 	std::cerr << "\n connections: "<<connections<< std::endl;
+
 	std::string res;
-	std::string str="Hi Client";
-	if(sp.Recv(res,959)){ //959
+	std::string str(10,'y');
+	if(sp.Recv(res,1000)){ //959
 		std::cerr << res.size() << std::endl;
 		if(res.size()){
-			sleep(2);
 			if(sp.Send(str)){
 				std::cerr << str.size() << std::endl;
 			}
@@ -27,8 +27,6 @@ void Handel(Socket& sp){
 }
 
 int main(int argc, char **argv) {
-
-	signal(SIGPIPE, SIG_IGN);
 
 	Socket::verbose = true;
 	Select pool;
@@ -52,21 +50,23 @@ int main(int argc, char **argv) {
 	{
 		std::vector<Socket> selected;
 		while( pool.Listen(selected) ){//connections<4 && 
-			std::cerr << "\nNew network activity.\n" << std::endl;
+			std::cerr << "New network activity." << std::endl;
 			for(int i=0; i < selected.size(); i++ ){
-				if( selected[i].Listening() && selected[i].Protocol()=="tcp"){
-					Socket sp( selected[i].Accept() );
-					if(sp){
-						pool.Add(sp);
-						//std::thread t( Handel, std::ref(sp) );
-						//t.join();
-					}
-				}else{
-					Handel( selected[i] );
-					if( !selected[i].Listening() && selected[i].Protocol()=="tcp"){
-						pool.Remove(selected[i]);
-					}
-				}			
+				if(selected[i].GetEvent() & POLLIN ){
+					if( selected[i].Listening() && selected[i].Protocol()=="tcp"){
+						Socket sp( selected[i].Accept() );
+						if(sp){
+							pool.Add(sp);
+							//std::thread t( Handel, std::ref(sp) );
+							//t.join();
+						}
+					}else{
+						Handel( selected[i] );
+						if( !selected[i].Listening() && selected[i].Protocol()=="tcp"){
+							pool.Remove(selected[i]);
+						}
+					}			
+				}
 			};
 			connections++;
 			selected.clear();

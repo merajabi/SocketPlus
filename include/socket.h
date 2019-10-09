@@ -49,6 +49,8 @@ struct addrinfo {
 #include <string>
 #include <vector>
 #include <memory>
+#include <atomic>
+
 
 /*
 ** System header files.
@@ -126,53 +128,73 @@ void GetDateTime(std::string& dateStr,std::string& timeStr, std::string& msStr, 
 std::string GetDateTimeStr();
 uint64_t get_ss();
 
-
+using namespace std;
 
 class socket_guard {
 	public:
 	typedef enum {RDWR=0,NORD=1,NOWR=2,NORW=3,ERR=7} socket_status; /* 0000 RDWR 0001 NORD 0010 NOWR 0011 NORW 0111 ERR */
 
 	private:
-		mutable int sock;
-		int event;
-		socket_status status;
+		mutable atomic<int> sock;
+		mutable atomic<int> event;
+		mutable atomic<socket_status> status;
 
 	public:
 		socket_guard(int sock=INVALID_SOCKET):sock(sock),event(0),status(RDWR){
 		};
-		socket_guard(const socket_guard& sg):sock(sg.sock),event(sg.event),status(sg.status){
-			sg.sock=INVALID_SOCKET;
+		socket_guard(const socket_guard& sg){
+			int oldSock;
+			do {
+				oldSock = sg.sock; // lock-based operator= inside std::atomic<T>
+				sock = oldSock;
+			// lock-based function compare_exchange_weak() inside std::atomic<T>
+			} while(!sg.sock.compare_exchange_weak(oldSock, INVALID_SOCKET));
+			event=sg.event.load();
+			status=sg.status.load();
+			sg.event=0;
+			sg.status=RDWR;
 		}
 		socket_guard& operator = (const socket_guard& sg){
-			assert(sock==INVALID_SOCKET);
-			sock=sg.sock;
-			sg.sock=INVALID_SOCKET;
-			event=sg.event;
-			status=sg.status;
+			assert(sock.load()==INVALID_SOCKET);
+			int oldSock;
+			do {
+				oldSock = sg.sock; // lock-based operator= inside std::atomic<T>
+				sock = oldSock;
+			// lock-based function compare_exchange_weak() inside std::atomic<T>
+			} while(!sg.sock.compare_exchange_weak(oldSock, INVALID_SOCKET));
+			event=sg.event.load();
+			status=sg.status.load();
+			sg.event=0;
+			sg.status=RDWR;
 			return *this;
 		}
 		~socket_guard(){
 			close();
 		}
 		bool close(){
-			fprintf( stderr,"Socket id: %d Closed.\n",sock);
+			fprintf( stderr,"Socket id: %d Closed.\n",sock.load());
 			bool result = false;
-			if( sock >= 0 ){
-				result = SYSCALL( "close", __LINE__, ::close( sock ) );
-				sock = -sock;
+			int oldSock;
+			do {
+				oldSock = sock; // lock-based operator= inside std::atomic<T>
+				// lock-based function compare_exchange_weak() inside std::atomic<T>
+			} while(oldSock >= 0 && !sock.compare_exchange_weak(oldSock, -1*oldSock));
+
+			if( oldSock >= 0 ){
+				result = SYSCALL( "close", __LINE__, ::close( oldSock ) );
 				set_status(NORW);
 			}
 			return result;
 		}
 		int get() const {
-			return (sock<0)?-sock:sock;
+			return (sock.load()<0)?-1*sock.load():sock.load();
 		}
-		int release(){
+		int release(){ // its not a thread safe function
 			int tmp=sock;
 			reset();
 			return tmp;
 		}
-		void reset(){ sock=INVALID_SOCKET; event=0; status=RDWR;}
+		void reset(){ sock=INVALID_SOCKET; event=0; status=RDWR;}// its not a thread safe function
 		void set_event(int e) { 
 			event = e; 
 			if( e & (POLLERR|POLLHUP) ){
@@ -185,7 +207,7 @@ class socket_guard {
 		int get_event(){return event;}
 		void set_status(socket_status s) { status = static_cast<socket_status>(status | s); }
 		socket_status get_status(){return status;}
-		operator bool () const {return static_cast<bool>( sock >= 0 );}
+		operator bool () const {return static_cast<bool>( sock.load() >= 0 );}
 };
 
 class Socket {
@@ -222,7 +244,7 @@ class Socket {
 		Socket(const Socket& s);
 		Socket& operator = (const Socket& s);
 
-
+		// its quite possible to call close on one thread and read or write on invalid handel in other thread!!!
 		bool Close();
 		bool Open(){ return (listening)?OpenServer():OpenClient();}
 		bool Send(const std::string& buffer){ return SendTo(buffer);}

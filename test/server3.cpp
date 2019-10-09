@@ -15,7 +15,6 @@ bool Recv(Socket& c){
 	std::string recvStr;
 	result = c.Recv(recvStr,50);
 	std::cout << GetDateTimeStr() << " Recv: " << recvStr.size() << ((result)?" OK":" NOK") << std::endl;
-	//sleep(2);
 	return result;
 }
 bool Send(Socket& c){
@@ -23,7 +22,6 @@ bool Send(Socket& c){
 	std::string sendStr(50,'x');
 	result = c.Send(sendStr);
 	std::cout << GetDateTimeStr() << " Send: "  << sendStr.size() << ((result)?" OK":" NOK") << std::endl;
-	//sleep(2);
 	return result;
 }
 int main(int argc, char **argv) {

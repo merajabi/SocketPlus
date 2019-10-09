@@ -13,7 +13,7 @@ bool Select::Add(const Socket& s){
 		{
 			struct pollfd pfd;
 			pfd.fd      = s.GetFD();
-			pfd.events  = POLLIN | POLLPRI | POLLOUT | POLLRDHUP ;
+			pfd.events  = POLLIN | POLLPRI | POLLRDHUP ;//| POLLOUT
 			pfd.revents = 0;
 			descVec.push_back(pfd);
 		}

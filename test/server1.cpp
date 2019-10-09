@@ -11,11 +11,12 @@ int connections=0;
 void HandelPtr(std::unique_ptr<Socket> sp){
 	sp->SetTimeout(2*1000);
 	std::cout << "\n thread: "<<connections<< std::endl;
+
 	std::string res;
-	sp->Recv(res,959); //959
+	sp->Recv(res,1000); //959
 	std::cout << res.size() << std::endl;
 
-	std::string str="Hi Client";
+	std::string str(10,'y');
 	std::cout << str.size() << std::endl;
 	sp->Send(str);
 }
@@ -23,11 +24,12 @@ void HandelPtr(std::unique_ptr<Socket> sp){
 void Handel(Socket& sp){
 	sp.SetTimeout(2*1000);
 	std::cerr << "\n connections: "<<connections<< std::endl;
+
 	std::string res;
-	sp.Recv(res,959); //959
+	sp.Recv(res,1000); //959
 	std::cerr << res.size() << std::endl;
 
-	std::string str="Hi Client";
+	std::string str(10,'y');
 	std::cerr << str.size() << std::endl;
 	sp.Send(str);
 }

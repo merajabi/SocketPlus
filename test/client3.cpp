@@ -18,7 +18,7 @@ bool Send(Socket& c){
 }
 int main(int argc, char **argv) {
 	std::string peerName="localhost";
-	std::string peerPort="8080";
+	std::string peerPort="9999";
 	std::string peerProtocol="tcp";
 
     printf("usage: %s [server [port [protocol] ] ]   \n", argv[0]);
@@ -34,80 +34,6 @@ int main(int argc, char **argv) {
 	}
 	
 	Socket::verbose = true;
-
-	{/*
-		std::string sendStr(50,'x');
-		std::string recvStr;
-
-		Socket c(peerName, peerPort, peerProtocol);
-		c.Open();
-		
-		c.Send(sendStr);
-		std::cout << sendStr.size() << std::endl;
-		
-		c.Recv(recvStr,50);
-		std::cout << recvStr.size() << std::endl;
-
-		c.ShutDown(SHUT_WR); // // peer recv POLLIN | POLLOUT | POLLRDHUP
-
-		c.Recv(recvStr,50);
-		std::cout << recvStr.size() << std::endl;
-		*/
-	}
-	{
-		/*
-		std::string sendStr(50,'x');
-		std::string recvStr;
-
-		Socket c(peerName, peerPort, peerProtocol);
-		c.Open();
-		
-		c.Send(sendStr);
-		std::cout << sendStr.size() << std::endl;
-		
-		c.Recv(recvStr,50);
-		std::cout << recvStr.size() << std::endl;
-
-		c.ShutDown(SHUT_WR); // // peer recv POLLIN | POLLOUT | POLLRDHUP
-
-		c.Send(sendStr);		// System call failed ('sendto') - Broken pipe.
-								// peer read 0 bytes
-		std::cout << sendStr.size() << std::endl;
-		*/
-	}
-
-	{ /*
-		std::string sendStr(50,'x');
-		std::string recvStr;
-
-		Socket c(peerName, peerPort, peerProtocol);
-
-		result = std::time(nullptr);
-		std::cerr << std::asctime(std::localtime(&result));
-		c.Open();
-		
-		//c.SetTimeout(5*1000);
-		result = std::time(nullptr);
-		std::cerr << std::asctime(std::localtime(&result));
-		c.Send(sendStr);
-		std::cout << sendStr.size() << std::endl;
-		
-		result = std::time(nullptr);
-		std::cerr << std::asctime(std::localtime(&result));
-		c.Recv(recvStr,50);
-		std::cout << recvStr.size() << std::endl;
-
-		result = std::time(nullptr);
-		std::cerr << std::asctime(std::localtime(&result));
-		c.ShutDown(SHUT_RD); // // peer recv POLLIN | POLLOUT | POLLRDHUP
-		//sleep(2);
-
-		result = std::time(nullptr);
-		std::cerr << std::asctime(std::localtime(&result));
-		c.Send(sendStr);
-		std::cout << sendStr.size() << std::endl;
-		*/
-	}
 
 	{ 
 		std::string sendStr(50,'x');
