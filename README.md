@@ -1,7 +1,7 @@
 # SocketPlus
 Thread Safe Socket API based on Acceptor/Connector/Reactor Pattern
-
-# Samples
+The socket handle ipv4, ipv6, tcp & udp and it resolves names too.
+# Samples one: simple client&server with No thread
 A simple server code look likes this
 ```cpp
 #include <iostream>
@@ -39,10 +39,10 @@ int main(int argc, char **argv) {
 		hostFamily = argv[3];
 	}
 
-	Socket::verbose = true;
+	//Socket::verbose = true;
 
 	{
-		Socket s(DFLT_HOST,hostPort,hostProtocol,hostFamily,true); // the true parameter here make the socket a server
+		Socket s(hostName,hostPort,hostProtocol,hostFamily,true); // the true parameter here make the socket a server
 		if(s.Open()){
 			Socket ss( s.Listen() ); // listen on server socket, and construct new socket
 			if( hostProtocol=="tcp" && ss ){	// if ss is valid socket the new socket is created so this is a tcp socket
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 		peerProtocol = argv[3];
 	}
 	
-	Socket::verbose = true;
+	//Socket::verbose = true;
 
 	{
 		Socket c(peerName, peerPort, peerProtocol);
@@ -109,9 +109,151 @@ int main(int argc, char **argv) {
 ## compile & test
 
 ```sh
-# g++ -pthread -Iinclude/ src/*.cpp test/server.cpp -o server.out
-# g++ -pthread -Iinclude/ src/*.cpp test/client.cpp -o client.out
+# g++ -Iinclude/ src/*.cpp test/server.cpp -o server.out
+# g++ -Iinclude/ src/*.cpp test/client.cpp -o client.out
 
 # ./server.out 8080 tcp ipv4
 # ./client.out 127.0.0.1 8080 tcp
+
+# ./server.out 8080 udp ipv6
+# ./client.out ::1 8080 udp
+
+```
+
+# Samples two: simple client&server with thread
+A simple server code with thread look likes this
+```cpp
+#include <iostream>
+#include <thread>
+#include <string>
+#include "socket.h"
+
+void Handel(Socket sp){
+	sp.SetTimeout(2*1000);
+
+	std::string res;
+	sp.Recv(res,1000);
+	std::cerr << res.size() << std::endl;
+
+	std::string str(10,'y');
+	sp.Send(str);
+	std::cerr << str.size() << std::endl;
+}
+
+int main(int argc, char **argv) {
+	std::string hostName="localhost";
+	std::string hostPort="8080";
+	std::string hostProtocol="tcp";
+	std::string hostFamily="ipv4";
+
+    std::cout << "usage: "<< argv[0] << " [port [protocol [family] ] ] ] " << std::endl;
+    std::cout << "defaults: "<< "./server.out 8080 tcp ipv4 " << std::endl;
+
+
+	if( argc > 1 ){
+		hostPort = argv[1];
+	}
+	if( argc > 2 ){
+		hostProtocol = argv[2];
+	}
+	if( argc > 3 ){
+		hostFamily = argv[3];
+	}
+
+	//Socket::verbose = true;
+
+	{
+		Socket s(hostName,hostPort,hostProtocol,hostFamily,true);
+
+		if(s.Open()){
+			Socket ss( s.Listen() );
+			if(ss){	// if this is tcp socket handle connection in new thread
+				std::thread t( Handel, ss );
+				t.detach(); //join or detach
+			}else{		// if this is udp socket send&recv in original thread
+				Handel(s);
+			}			
+		}
+		//s.Close();
+		sleep(5);	// we wait here for new thread to finish, because we have detached it, we donot want to exit main process while any thread is still running
+	}
+	return 0;
+};
+```
+Or we can write the server using smart pointers
+```cpp
+#include <iostream>
+#include <thread>
+#include <memory>
+#include <string>
+#include "socket.h"
+
+void HandelPtr(std::unique_ptr<Socket> sp){
+	sp->SetTimeout(2*1000);
+
+	std::string res;
+	sp->Recv(res,1000); 
+	std::cout << res.size() << std::endl;
+
+	std::string str(10,'y');
+	sp->Send(str);
+	std::cout << str.size() << std::endl;
+}
+
+void Handel(Socket& sp){
+	sp.SetTimeout(2*1000);
+
+	std::string res;
+	sp.Recv(res,1000);
+	std::cerr << res.size() << std::endl;
+
+	std::string str(10,'y');
+	sp.Send(str);
+	std::cerr << str.size() << std::endl;
+}
+
+int main(int argc, char **argv) {
+	std::string hostName="localhost";
+	std::string hostPort="8080";
+	std::string hostProtocol="tcp";
+	std::string hostFamily="ipv4";
+
+    std::cout << "usage: "<< argv[0] << " [port [protocol [family] ] ] ] " << std::endl;
+    std::cout << "defaults: "<< "./server.out 8080 tcp ipv4 " << std::endl;
+
+
+	if( argc > 1 ){
+		hostPort = argv[1];
+	}
+	if( argc > 2 ){
+		hostProtocol = argv[2];
+	}
+	if( argc > 3 ){
+		hostFamily = argv[3];
+	}
+
+	//Socket::verbose = true;
+
+	{
+		Socket s(hostName,hostPort,hostProtocol,hostFamily,true);
+
+		if(s.Open()){
+			std::unique_ptr<Socket> sp(new Socket(s.Listen()));
+			if(*sp){	// if this is tcp socket handle connection in new thread
+				std::thread t( HandelPtr,std::move(sp) );
+				t.detach(); //join or detach
+			}else{		// if this is udp socket send&recv in original thread
+				Handel(s);
+			}			
+		}
+		//s.Close();
+		sleep(5);	// we wait here for new thread to finish, because we have detached it, we donot want to exit main process while any thread is still running
+	}
+	return 0;
+};
+```
+## compile & test
+compile the server with pthread
+```sh
+# g++ -pthread -Iinclude/ src/*.cpp test/server.cpp -o server.out
 ```

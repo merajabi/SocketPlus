@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 	Socket::verbose = true;
 
 	{
-		Socket s(DFLT_HOST,hostPort,hostProtocol,hostFamily,true); // the true parameter here make the socket a server
+		Socket s(hostName,hostPort,hostProtocol,hostFamily,true); // the true parameter here make the socket a server
 		if(s.Open()){
 			Socket ss( s.Listen() ); // listen on server socket, and construct new socket
 			if( hostProtocol=="tcp" && ss ){	// if ss is valid socket the new socket is created so this is a tcp socket

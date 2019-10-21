@@ -1,22 +1,9 @@
 #include <iostream>
 #include <thread>
-#include <memory>
 #include <string>
 #include "socket.h"
 
-void HandelPtr(std::unique_ptr<Socket> sp){
-	sp->SetTimeout(2*1000);
-
-	std::string res;
-	sp->Recv(res,1000); 
-	std::cout << res.size() << std::endl;
-
-	std::string str(10,'y');
-	sp->Send(str);
-	std::cout << str.size() << std::endl;
-}
-
-void Handel(Socket& sp){
+void Handel(Socket sp){
 	sp.SetTimeout(2*1000);
 
 	std::string res;
@@ -54,9 +41,9 @@ int main(int argc, char **argv) {
 		Socket s(hostName,hostPort,hostProtocol,hostFamily,true);
 
 		if(s.Open()){
-			std::unique_ptr<Socket> sp(new Socket(s.Listen()));
-			if(*sp){	// if this is tcp socket handle connection in new thread
-				std::thread t( HandelPtr,std::move(sp) );
+			Socket ss( s.Listen() );
+			if(ss){	// if this is tcp socket handle connection in new thread
+				std::thread t( Handel, ss );
 				t.detach(); //join or detach
 			}else{		// if this is udp socket send&recv in original thread
 				Handel(s);
