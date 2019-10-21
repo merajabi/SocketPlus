@@ -36,7 +36,7 @@ bool Select::Remove(const Socket& s){
 }
 
 bool Select::Listen(std::vector<Socket>& selected){
-	std::cerr << "@ Listen Begin: " <<std::endl;
+	//std::cerr << "@ Listen Begin: " <<std::endl;
 	if(!descVec.size()){
 		return false;
 	}

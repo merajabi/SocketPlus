@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
 		peerProtocol = argv[3];
 	}
 	
-	Socket::verbose = true;
+	//Socket::verbose = true;
 
 	{
 		Socket c(peerName, peerPort, peerProtocol);

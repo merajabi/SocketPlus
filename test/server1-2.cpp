@@ -3,7 +3,7 @@
 #include <string>
 #include "socket.h"
 
-void Handel(Socket sp){
+void Handel(Socket sp){ // we shall use copy here, the reference may become invalid if we detach the thread!
 	sp.SetTimeout(2*1000);
 
 	std::string res;

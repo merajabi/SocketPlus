@@ -1,7 +1,7 @@
 # SocketPlus
-Thread Safe Socket API based on Acceptor/Connector/Reactor Pattern
+Thread Safe Socket API based on Acceptor/Connector/Reactor Pattern.
 The socket handle ipv4, ipv6, tcp & udp and it resolves names too.
-# Samples one: simple client&server with No thread
+# Sample one: simple client&server with No thread
 A simple server code look likes this
 ```cpp
 #include <iostream>
@@ -120,15 +120,15 @@ int main(int argc, char **argv) {
 
 ```
 
-# Samples two: simple client&server with thread
-A simple server code with thread look likes this
+# Sample two: simple client&server with thread
+A simple server code with thread look likes this, we use client part as above
 ```cpp
 #include <iostream>
 #include <thread>
 #include <string>
 #include "socket.h"
 
-void Handel(Socket sp){
+void Handel(Socket sp){  // we shall use copy here, the reference may become invalid if we detach the thread!
 	sp.SetTimeout(2*1000);
 
 	std::string res;
@@ -180,7 +180,13 @@ int main(int argc, char **argv) {
 	return 0;
 };
 ```
-Or we can write the server using smart pointers
+## compile & test
+compile the server with pthread
+```sh
+# g++ -pthread -Iinclude/ src/*.cpp test/server.cpp -o server.out
+```
+# Sample three: simple client&server with thread using smart pointers
+we can write the server using smart pointers as follow
 ```cpp
 #include <iostream>
 #include <thread>
@@ -257,3 +263,75 @@ compile the server with pthread
 ```sh
 # g++ -pthread -Iinclude/ src/*.cpp test/server.cpp -o server.out
 ```
+# Sample four: handling multiple servers
+we can handle multiple server using Select class, we create a pool of socket objects and listen on all of them, then we can handle each one.
+```cpp
+#include <iostream>
+#include <thread>
+#include <string>
+#include <vector>
+#include "socket.h"
+#include "select.h"
+
+void Handle(Socket sp){
+	sp.SetTimeout(2*1000);
+
+	std::string res;
+	sp.Recv(res,1000);
+	std::cerr << res.size() << std::endl;
+
+	std::string str(10,'y');
+	sp.Send(str);
+	std::cerr << str.size() << std::endl;
+}
+
+int main(int argc, char **argv) {
+	std::string hostName="localhost";
+	//Socket::verbose = true;
+	Select pool;										// create a pool
+	{
+		Socket s1(hostName,"8080","tcp","ipv4",true);	// create each server and add it to pool
+		s1.Open();
+		pool.Add(s1);
+
+		Socket s2(hostName,"8080","tcp","ipv6",true);
+		s2.Open();
+		pool.Add(s2);
+
+		Socket s3(hostName,"8080","udp","ipv4",true);
+		s3.Open();
+		pool.Add(s3);
+
+		Socket s4(hostName,"8080","udp","ipv6",true);
+		s4.Open();
+		pool.Add(s4);
+	}
+	{
+		std::vector<Socket> selected;				// A vector of selected sockets
+		while( pool.Listen(selected) ){				// listen on sockets in the pool
+			std::cout << "New network activity." << std::endl;
+			for(int i=0; i < selected.size(); i++ ){
+				if(selected[i].GetEvent() & POLLIN ){ // if we have POLLIN event
+					if( selected[i].Protocol()=="tcp" ){
+						Socket ss( selected[i].Accept() ); // we know there is POLLIN event, so no need to listen, just accept the connection
+						if(ss){
+							// handle the socket send&recv in the same thread or new one
+							//Handle(ss);		
+							std::thread t( Handle, ss );
+							t.join();
+						}
+					}else{
+						// handle the socket send&recv in the same thread or new one
+						//Handle( selected[i] );
+						std::thread t( Handle,  selected[i] );
+						t.join();
+					}			
+				}
+			}
+			selected.clear();		// clear list of selected sockets
+		}
+	}
+	return 0;
+};
+```
+# Sample five: socket server in multiplexing mode
