@@ -93,17 +93,23 @@ void Socket::Finalize(){
 
 Socket::Socket(const socket_guard& sg):sockGuard(new socket_guard(sg)), host(DFLT_HOST), service(DFLT_SERVICE), protocol(DFLT_PROTOCOL), family(DFLT_FAMILY), scope(DFLT_SCOPE_ID), listening(false), timeout(0){
 	Initialize();
-	fprintf(stderr, "Socket: %lu Created.\n",sockCount.load());
+	if(Socket::verbose){
+		fprintf(stderr, "Socket: %lu Created.\n",sockCount.load());
+	}
 }
 
 Socket::Socket(const std::string& host, const std::string& service, const std::string& protocol, const std::string& family,bool listening, unsigned long timeout): sockGuard(new socket_guard()), host(host), service(service), protocol(protocol), family(family), scope(DFLT_SCOPE_ID), listening(listening), timeout(timeout) {
 	Initialize();
-	fprintf(stderr, "Socket: %lu Created.\n",sockCount.load());
+	if(Socket::verbose){
+		fprintf(stderr, "Socket: %lu Created.\n",sockCount.load());
+	}
 }
 
 Socket::Socket(const Socket& s):sockGuard(s.sockGuard), host(s.host), service(s.service), protocol(s.protocol), family(s.family), scope(s.scope), listening(s.listening), timeout(s.timeout),udpSockStor(s.udpSockStor){
 	Initialize();
-	fprintf(stderr, "Socket: %lu Created by Copy.\n",sockCount.load());
+	if(Socket::verbose){
+		fprintf(stderr, "Socket: %lu Created by Copy.\n",sockCount.load());
+	}
 }
 Socket& Socket::operator = (const Socket& s){
 	sockGuard	=	s.sockGuard;
@@ -118,8 +124,10 @@ Socket& Socket::operator = (const Socket& s){
 	return *this;
 }
 
-Socket::~Socket(){ 
-	fprintf(stderr, "~Socket: %lu Destructed.\n",sockCount.load());
+Socket::~Socket(){
+	if(Socket::verbose){ 
+		fprintf(stderr, "~Socket: %lu Destructed.\n",sockCount.load());
+	}
 	Finalize();
 }
 
@@ -300,7 +308,7 @@ socket_guard Socket::Accept () {
 			struct addrinfo saddri={0,sadr->sa_family,0,0,sadrLen,sadr,0,0};
 			PrintAddrInfo(&saddri);
 		}
-		fprintf( stderr,"Socket id: %d Opened.\n",newSG.get());
+		if(verbose) { fprintf( stderr,"Socket id: %d Opened.\n",newSG.get()); }
 		return newSG;//.release();
 
 	}  /* End IF this was a TCP connection request. */
@@ -404,7 +412,6 @@ socket_guard Socket::Listen() {
 *    true on success, false on error.
 ******************************************************************************/
 bool Socket::OpenServer( ) {
-	fprintf(stderr, "OpenServer called.\n");
    struct addrinfo *ai;
    struct addrinfo *aiHead;
    struct addrinfo  hints    = { .ai_flags  = AI_PASSIVE };   // Server mode.
@@ -566,7 +573,7 @@ bool Socket::OpenServer( ) {
    ** Clean up.
    */
    freeaddrinfo( aiHead );
-	fprintf( stderr,"Socket id: %d Opened.\n",sockGuard->get());
+	if(verbose) { fprintf( stderr,"Socket id: %d Opened.\n",sockGuard->get()); }
    return true;
 }  /* End openSckt() */
 
@@ -587,7 +594,6 @@ bool Socket::OpenServer( ) {
 *    address records have been processed and a socket could not be initialized.
 ******************************************************************************/
 bool Socket::OpenClient() {
-	fprintf(stderr, "OpenClient called.\n");
 	struct addrinfo *ai;
 	struct addrinfo *aiHead;
 	struct addrinfo  hints;
@@ -682,7 +688,7 @@ bool Socket::OpenClient() {
 		{
 			freeaddrinfo( aiHead );
 			*sockGuard = sg;
-			fprintf( stderr,"Socket id: %d Opened.\n",sockGuard->get());
+			if(verbose) { fprintf( stderr,"Socket id: %d Opened.\n",sockGuard->get()); }
 			return true;
 		}
 	}  /* End FOR each address record returned by getaddrinfo(3). */
@@ -800,29 +806,31 @@ bool Socket::PrintAddrInfo( struct addrinfo *sadr ){
 }
 void Socket::SetEvent(int e){
 	sockGuard->set_event(e);
-	fprintf( stderr,"\n ******************** \n");
-	fprintf( stderr," Socket %d events start.\n",sockGuard->get());
-	if( e & POLLIN ) {
-		fprintf( stderr," POLLIN event (0x%02X).\n",POLLIN);
+	if(verbose) {
+		fprintf( stderr,"\n ******************** \n");
+		fprintf( stderr," Socket %d events start.\n",sockGuard->get());
+		if( e & POLLIN ) {
+			fprintf( stderr," POLLIN event (0x%02X).\n",POLLIN);
+		}
+		if( e & POLLPRI ) {
+			fprintf( stderr," POLLPRI event (0x%02X).\n",POLLPRI);
+		}
+		if( e & POLLOUT ) {
+			fprintf( stderr," POLLOUT event (0x%02X).\n",POLLOUT);
+		}
+		if( e & POLLRDHUP ) {
+			fprintf( stderr," POLLRDHUP event (0x%02X).\n",POLLRDHUP);
+		}
+		if( e & POLLERR ) {
+			fprintf( stderr," POLLERR event (0x%02X).\n",POLLERR);
+		}
+		if( e & POLLHUP ) {
+			fprintf( stderr," POLLHUP event (0x%02X).\n",POLLHUP);
+		}
+		if( e & POLLNVAL ) {
+			fprintf( stderr," POLLNVAL event (0x%02X).\n",POLLNVAL);
+		}
+		fprintf( stderr," Socket %d events end.\n",sockGuard->get());
+		fprintf( stderr," ******************** \n\n");
 	}
-	if( e & POLLPRI ) {
-		fprintf( stderr," POLLPRI event (0x%02X).\n",POLLPRI);
-	}
-	if( e & POLLOUT ) {
-		fprintf( stderr," POLLOUT event (0x%02X).\n",POLLOUT);
-	}
-	if( e & POLLRDHUP ) {
-		fprintf( stderr," POLLRDHUP event (0x%02X).\n",POLLRDHUP);
-	}
-	if( e & POLLERR ) {
-		fprintf( stderr," POLLERR event (0x%02X).\n",POLLERR);
-	}
-	if( e & POLLHUP ) {
-		fprintf( stderr," POLLHUP event (0x%02X).\n",POLLHUP);
-	}
-	if( e & POLLNVAL ) {
-		fprintf( stderr," POLLNVAL event (0x%02X).\n",POLLNVAL);
-	}
-	fprintf( stderr," Socket %d events end.\n",sockGuard->get());
-	fprintf( stderr," ******************** \n\n");
 }

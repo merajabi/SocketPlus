@@ -7,7 +7,8 @@ int main(int argc, char **argv) {
 	std::string peerPort="8080";
 	std::string peerProtocol="tcp";
 
-    printf("usage: %s [server [port [protocol] ] ]   \n", argv[0]);
+    std::cout << "usage: "<< argv[0] << " [server [port [protocol] ] ] " << std::endl;
+    std::cout << "defaults: "<< "./client.out 127.0.0.1 8080 tcp " << std::endl;
 
 	if( argc > 1 ){
 		peerName = argv[1];
@@ -19,9 +20,6 @@ int main(int argc, char **argv) {
 		peerProtocol = argv[3];
 	}
 	
-   /*
-   ** Determine the program name (w/o directory prefix).
-   */
 	Socket::verbose = true;
 
 	{
@@ -34,7 +32,7 @@ int main(int argc, char **argv) {
 		std::cout << str.size() << std::endl;
 
 		std::string res;
-		c.Recv(res,10); //9
+		c.Recv(res,10);
 		std::cout << res.size() << std::endl;
 	}
 	return 0;

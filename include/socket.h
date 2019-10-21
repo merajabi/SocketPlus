@@ -173,7 +173,7 @@ class socket_guard {
 			close();
 		}
 		bool close(){
-			fprintf( stderr,"Socket id: %d Closed.\n",sock.load());
+			//fprintf( stderr,"Socket id: %d Closed.\n",sock.load());
 			bool result = false;
 			int oldSock;
 			do {
