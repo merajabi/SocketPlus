@@ -1,6 +1,9 @@
 #!/bin/sh
-x86_64-w64-mingw32-g++ -std=c++11 -static -static-libgcc -static-libstdc++ -Iinclude/ src/socket.cpp test/client1.cpp -o client.exe -lws2_32 -lmswsock -ladvapi32 -liphlpapi
-x86_64-w64-mingw32-g++ -std=c++11 -static -static-libgcc -static-libstdc++ -Iinclude/ src/socket.cpp test/server0.cpp -o server.exe -lws2_32 -lmswsock -ladvapi32 -liphlpapi
+g++ -std=c++11 -Iinclude/ src/*.cpp test/client1.cpp -o client.out
+g++ -std=c++11 -Iinclude/ src/*.cpp test/server0.cpp -o server.out
+
+x86_64-w64-mingw32-g++ -std=c++11 -static -static-libgcc -static-libstdc++ -Iinclude/ src/*.cpp test/client1.cpp -o client.exe -lws2_32 -lmswsock -ladvapi32 -liphlpapi
+x86_64-w64-mingw32-g++ -std=c++11 -static -static-libgcc -static-libstdc++ -Iinclude/ src/*.cpp test/server0.cpp -o server.exe -lws2_32 -lmswsock -ladvapi32 -liphlpapi
 
 
 # I'm on x64 Windows 8 and I want to release an binary without dll's.

@@ -52,7 +52,7 @@ bool Select::Listen(std::vector<Socket>& selected){
 		*/
 		int status;
 		do {
-			status = poll( &descVec[0], descVec.size(), -1 ); /* Wait indefinitely for input. */
+			status = SOCKET_FUNC_POLL( &descVec[0], descVec.size(), -1 ); /* Wait indefinitely for input. */
 		} while ( ( status < 0 ) && ( errno == EINTR ) );
 		if(!SYSCALL("poll", __LINE__,  status )){   /* Check for a bona fide system call error. */
 			return false;
