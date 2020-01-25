@@ -170,8 +170,8 @@ class Socket {
 		bool OpenClient();
 		bool OpenServer();
 
-		bool SendTo(const std::string& buffer);
-		bool RecvFrom(std::string& buffer, int recvbuflen);
+		bool SendTo(const std::vector<uint8_t>& buffer);
+		bool RecvFrom(std::vector<uint8_t>& buffer, int recvbuflen);
 		bool PrintAddrInfo( struct addrinfo *ai );
 	public:
 		static bool     verbose;       			/* Verbose mode indication.     */
@@ -185,8 +185,21 @@ class Socket {
 		// its quite possible to call close on one thread and read or write on invalid handel in other thread!!!
 		bool Close();
 		bool Open(){ return (listening)?OpenServer():OpenClient();}
-		bool Send(const std::string& buffer){ return SendTo(buffer);}
-		bool Recv(std::string& buffer, int recvbuflen){ return RecvFrom(buffer,recvbuflen);}
+		bool Send(const std::string& buffer){ 
+			std::vector<uint8_t> tempBuffer(buffer.begin(),buffer.end());
+			return SendTo(tempBuffer);
+		}
+		bool Recv(std::string& buffer, int recvbuflen){ 
+			bool result;
+			std::vector<uint8_t> tempBuffer;
+			result = RecvFrom(tempBuffer,recvbuflen);
+			buffer.insert(buffer.end(),tempBuffer.begin(),tempBuffer.end());
+			return result;
+		}
+
+		bool Send(const std::vector<uint8_t>& buffer){ return SendTo(buffer);}
+		bool Recv(std::vector<uint8_t>& buffer, int recvbuflen){ return RecvFrom(buffer,recvbuflen);}
+
 		bool ShutDown(int type);
 
 		socket_guard Listen();

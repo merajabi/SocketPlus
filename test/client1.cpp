@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
 		std::string res;
 		c.Recv(res,10);
 		std::cout << res.size() << std::endl;
+		std::cout << res << std::endl;
 	}
 	return 0;
 };

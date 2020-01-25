@@ -200,7 +200,7 @@ bool Socket::SetTimeout(unsigned long tout){
 	return true;
 }
 
-bool Socket::SendTo(const std::string& buffer){
+bool Socket::SendTo(const std::vector<uint8_t>& buffer){
 	if( !(*sockGuard) ){
          fprintf( stderr,
                   "%s (line %d): ERROR - Socket: Socket not open ",
@@ -225,7 +225,7 @@ bool Socket::SendTo(const std::string& buffer){
 		ssize_t count;
 		do {
 			count = sendto( sockGuard->get(),
-							buffer.c_str(),
+							(const char*)buffer.data(),
 							wBytes,
 							MSG_NOSIGNAL,
 							sadr,        /* Address & address length   */
@@ -249,7 +249,7 @@ bool Socket::SendTo(const std::string& buffer){
 ** sockaddr_storage to receive the address.
 */
 
-bool Socket::RecvFrom(std::string& buffer, int recvbuflen){
+bool Socket::RecvFrom(std::vector<uint8_t>& buffer, int recvbuflen){
 	if( !(*sockGuard) ){
          fprintf( stderr,
                   "%s (line %d): ERROR - Socket: Socket not open ",
@@ -271,11 +271,10 @@ bool Socket::RecvFrom(std::string& buffer, int recvbuflen){
 
 	ssize_t inBytes;
 	do {
-		std::string recvbuf;
-		recvbuf.resize(recvbuflen+1);
-		inBytes = recvfrom( sockGuard->get(), &recvbuf[0], recvbuflen, 0, sadr, &sadrLen );
+		std::vector<uint8_t> recvbuf(recvbuflen,0);
+		inBytes = recvfrom( sockGuard->get(), (char*) &recvbuf[0], recvbuflen, 0, sadr, &sadrLen );
 		if(inBytes > 0){
-			buffer+=std::string(recvbuf.begin(),recvbuf.begin()+inBytes);
+			buffer.insert(buffer.end(),recvbuf.begin(),recvbuf.begin()+inBytes);
 			recvbuflen-=inBytes;
 		}
 		else if( (inBytes < 0) && (GET_LAST_ERROR_NUMBER != ERROR_WOULDBLOCK ) ){

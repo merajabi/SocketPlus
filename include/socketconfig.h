@@ -91,11 +91,11 @@ struct addrinfo {
 #elif defined(OS_TYPE_WIN)
 	#undef UNICODE
 
-	#include <winsock2.h>
+	#include <winsock2.h>		// setsockopt sendto shutdown
 	#include <windows.h>
-	#include <winsock.h>
+	//#include <ws2def.h>			// struct addrinfo
 	#include <ws2tcpip.h>
-	#include <iphlpapi.h>
+	#include <iphlpapi.h>		// if_nametoindex
  
 	#define SOCKET_FUNC_CLOSE		closesocket
 	#define SOCKET_FUNC_POLL		WSAPoll

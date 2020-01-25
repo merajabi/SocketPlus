@@ -9,6 +9,7 @@ void Handel(Socket& sp){ // we can use reference or copy without any problem,
 	std::string res;
 	sp.Recv(res,1000); 
 	std::cout << res.size() << std::endl;
+	std::cout << res << std::endl;
 
 	std::string str(10,'y');
 	sp.Send(str);
