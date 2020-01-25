@@ -4,6 +4,10 @@
 #include <ctime>
 #include "socket.h"
 
+#if defined(OS_TYPE_WIN)
+	WSADATA Socket::wsaData;
+#endif
+
 std::atomic<unsigned long> Socket::sockCount(0);
 bool     Socket::verbose = false;         /* Verbose mode indication.     */
 
@@ -17,7 +21,7 @@ bool SYSCALL( const std::string& syscallName, int lineNbr, int status ) {
                "Socket",
                lineNbr,
                syscallName.c_str(),
-               strerror( errno ) );
+               strerror( GET_LAST_ERROR_NUMBER ) );
    }
    return (status != -1);   /* True if the system call was successful. */
 }  /* End SYSCALL() */
@@ -72,23 +76,25 @@ void GetDateTime(std::string& dateStr,std::string& timeStr, std::string& msStr,
 
 bool Socket::Initialize(){
 	if( 0 == sockCount++ ){
-		int iResult;
-/*
+#if defined(OS_TYPE_WIN)
 		// Initialize Winsock
-		iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
-		if (iResult != 0) {
-			printf("WSAStartup failed with error: %d\n", iResult);
+		if( !SYSCALL("WSAStartup", __LINE__,  WSAStartup(MAKEWORD(2,2), &wsaData) )){
 			return false;
 		}
-*/
+#endif
 	}
 	return true;
 }
 
-void Socket::Finalize(){
+bool Socket::Finalize(){
 	if( --sockCount == 0 ){
-		//WSACleanup();
+#if defined(OS_TYPE_WIN)
+		if( !SYSCALL("WSACleanup", __LINE__,  WSACleanup() )){
+			return false;
+		}
+#endif
 	}
+	return true;
 }
 
 Socket::Socket(const socket_guard& sg):sockGuard(new socket_guard(sg)), host(DFLT_HOST), service(DFLT_SERVICE), protocol(DFLT_PROTOCOL), family(DFLT_FAMILY), scope(DFLT_SCOPE_ID), listening(false), timeout(0){
@@ -178,9 +184,14 @@ bool Socket::SetTimeout(unsigned long tout){
 	}
 
 	timeout=tout;
+
+#ifdef OS_TYPE_NIX
 	struct timeval tv;
 	tv.tv_sec = static_cast<int>(timeout/1000);
-	tv.tv_usec = static_cast<int>(0);
+	tv.tv_usec = static_cast<int>((timeout-tv.tv_sec*1000)*1000);
+#elif defined(OS_TYPE_WIN)
+	unsigned long tv = timeout;
+#endif
 
 	if( !SYSCALL("setsockopt", __LINE__,  setsockopt(sockGuard->get(), SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(tv)) )){
 		return false;
@@ -218,7 +229,7 @@ bool Socket::SendTo(const std::string& buffer){
 							MSG_NOSIGNAL,
 							sadr,        /* Address & address length   */
 							sadrLen );   /*    received in recvfrom(). */
-		} while ( ( count < 0 ) && ( errno == EINTR ) );
+		} while ( ( count < 0 ) && ( GET_LAST_ERROR_NUMBER == ERROR_INTERRUPT ) );
 		if(!SYSCALL("sendto", __LINE__,  count )) {   /* Check for a bona fide error. */
 			return false;
 		}
@@ -266,14 +277,14 @@ bool Socket::RecvFrom(std::string& buffer, int recvbuflen){
 			buffer+=std::string(recvbuf.begin(),recvbuf.begin()+inBytes);
 			recvbuflen-=inBytes;
 		}
-		else if( (inBytes < 0) && (errno != EAGAIN ) ){
+		else if( (inBytes < 0) && (GET_LAST_ERROR_NUMBER != ERROR_WOULDBLOCK ) ){
 			SYSCALL("recvfrom", __LINE__,  inBytes );
 			return false;
 		}
 		SYSCALL("recvfrom", __LINE__,  inBytes );
 	} while( inBytes > 0 && recvbuflen > 0 && protocol=="tcp" );
 	if(listening && protocol=="udp"){
-		struct addrinfo saddri={0,sadr->sa_family,0,0,sadrLen,sadr,0,0};
+		struct addrinfo saddri=MAKE_ADDRINFO(0,sadr->sa_family,0,0,sadrLen,sadr,0,0);
 		PrintAddrInfo(&saddri);
 	}
 	return true;
@@ -305,7 +316,7 @@ socket_guard Socket::Accept () {
 		}
 
 		{
-			struct addrinfo saddri={0,sadr->sa_family,0,0,sadrLen,sadr,0,0};
+			struct addrinfo saddri=MAKE_ADDRINFO(0,sadr->sa_family,0,0,sadrLen,sadr,0,0);
 			PrintAddrInfo(&saddri);
 		}
 		if(verbose) { fprintf( stderr,"Socket id: %d Opened.\n",newSG.get()); }
@@ -364,8 +375,8 @@ socket_guard Socket::Listen() {
 		*/
 		int status;
 		do {
-			status = poll( &desc[0], desc.size(), -1 ); /* Wait indefinitely for input. */
-		} while ( ( status < 0 ) && ( errno == EINTR ) );
+			status = SOCKET_FUNC_POLL( &desc[0], desc.size(), -1 ); /* Wait indefinitely for input. */
+		} while ( ( status < 0 ) && ( GET_LAST_ERROR_NUMBER == ERROR_INTERRUPT ) );
 		if(!SYSCALL("poll", __LINE__,  status )){   /* Check for a bona fide system call error. */
 			return INVALID_SOCKET;
 		}
@@ -517,7 +528,7 @@ bool Socket::OpenServer( ) {
          if(!SYSCALL("setsockopt", __LINE__,  setsockopt( sg.get(),
 														  IPPROTO_IPV6,
 														  IPV6_V6ONLY,
-														  &v6Only,
+														  (char*)&v6Only,
 														  sizeof( v6Only ) ) ) ){
 			freeaddrinfo( aiHead );
 			return false;

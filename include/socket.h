@@ -44,6 +44,20 @@ struct addrinfo {
 };
 
 */
+//#define XSTR(x) STR(x)
+//#define STR(x) #x
+
+#if defined(__unix__) || defined(__linux__)
+	#define OS_TYPE_NIX
+
+#elif defined(_WIN32) || defined(_WIN64)
+	#define OS_TYPE_WIN
+	#define WIN32_LEAN_AND_MEAN
+	//#pragma message "The value of ABC: " XSTR(_WIN32_WINNT)
+	#undef _WIN32_WINNT
+	#define _WIN32_WINNT 0x0600
+#endif 
+
 #include <iostream>
 #include <atomic>
 #include <string>
@@ -51,23 +65,68 @@ struct addrinfo {
 #include <memory>
 #include <atomic>
 
-
 /*
 ** System header files.
 */
 #include <errno.h>        /* errno declaration & error codes.            */
-#include <netdb.h>        /* getaddrinfo(3) et al.                       */
-#include <net/if.h>       /* if_nametoindex(3).                          */
-#include <netinet/in.h>   /* sockaddr_in & sockaddr_in6 definition.      */
+
 #include <stdio.h>        /* printf(3) et al.                            */
 #include <stdlib.h>       /* exit(2).                                    */
 #include <string.h>       /* String manipulation & memory functions.     */
-#include <sys/poll.h>     /* poll(2) and related definitions.            */
-#include <sys/socket.h>   /* Socket functions (socket(2), bind(2), etc). */
 #include <time.h>         /* time(2) & ctime(3).                         */
 #include <unistd.h>       /* getopt(3), read(2), etc.                    */
-
 #include <assert.h>
+
+#ifdef OS_TYPE_NIX
+	#include <netdb.h>        /* getaddrinfo(3) et al.                       */
+	#include <net/if.h>       /* if_nametoindex(3).                          */
+	#include <netinet/in.h>   /* sockaddr_in & sockaddr_in6 definition.      */
+	#include <sys/poll.h>     /* poll(2) and related definitions.            */
+	#include <sys/socket.h>   /* Socket functions (socket(2), bind(2), etc). */
+
+	#define SOCKET_FUNC_CLOSE		::close
+	#define SOCKET_FUNC_POLL		poll
+	#define GET_LAST_ERROR_NUMBER 	errno
+	#define ERROR_INTERRUPT			EINTR					// A signal occurred before any requested event;
+	#define ERROR_WOULDBLOCK		EAGAIN // EWOULDBLOCK) 	// The socket is marked nonblocking and the receive operation would block, or a receive timeout had been set and the timeout expired before data was received.
+	#define ERROR_BADFD				EBADF
+
+	#define INVALID_SOCKET			-1						// Invalid file descriptor.
+  	#define MAKE_ADDRINFO(ai_flags,ai_family,ai_socktype,ai_protocol,ai_addrlen,ai_addr,ai_canonname,ai_next) {ai_flags,ai_family,ai_socktype,ai_protocol,ai_addrlen,ai_addr,ai_canonname,ai_next}
+	typedef int32_t SOCKET;		// Type definitions (for convenience).
+
+#elif defined(OS_TYPE_WIN)
+	#undef UNICODE
+
+	#include <winsock2.h>
+	#include <windows.h>
+	#include <winsock.h>
+#include <stdlib.h>
+#include <stdio.h>
+	#include <ws2tcpip.h>
+	#include <iphlpapi.h>
+ 
+	#define SOCKET_FUNC_CLOSE		closesocket
+	#define SOCKET_FUNC_POLL		WSAPoll
+	#define GET_LAST_ERROR_NUMBER 	WSAGetLastError()
+	#define ERROR_INTERRUPT			WSAEINTR			// Interrupted function call. A blocking operation was interrupted by a call to WSACancelBlockingCall.
+	#define ERROR_WOULDBLOCK		WSAEWOULDBLOCK 		// Resource temporarily unavailable. This error is returned from operations on nonblocking sockets that cannot be completed immediately
+	#define ERROR_BADFD				WSAENOTSOCK
+
+	#define MSG_NOSIGNAL			0
+	#define POLLRDHUP				POLLHUP
+	#define SHUT_RD					SD_RECEIVE
+	#define SHUT_WR					SD_SEND
+	#define SHUT_RDWR				SD_BOTH
+  	#define MAKE_ADDRINFO(ai_flags,ai_family,ai_socktype,ai_protocol,ai_addrlen,ai_addr,ai_canonname,ai_next) {ai_flags,ai_family,ai_socktype,ai_protocol,(size_t)ai_addrlen,ai_canonname,ai_addr,ai_next}
+	// typedef size_t socklen_t;
+	// Need to link with Ws2_32.lib
+	#pragma comment (lib, "Ws2_32.lib")
+	#pragma comment (lib, "Mswsock.lib")
+	#pragma comment (lib, "AdvApi32.lib")
+
+#endif
+
 /*
 ** Constants & macros.
 */
@@ -77,13 +136,7 @@ struct addrinfo {
 #define DFLT_FAMILY			"ipv6"   	// AF_INET, AF_INET6, AF_UNSPEC
 #define DFLT_SCOPE_ID		"eth0"      // Default scope identifier.
 
-#define INVALID_SOCKET		-1			// Invalid file descriptor.
 #define MAXCONNQLEN			3           // Max nbr of connection requests to queue.
-
-/*
-** Type definitions (for convenience).
-*/
-typedef int SOCKET;
 
 /*
 ** Macro to terminate the program if a system call error occurs.  The system
@@ -101,7 +154,7 @@ typedef int SOCKET;
                        "%s (line %d): System call ERROR - %s.\n",   \
                        "Socket",                                     \
                        __LINE__,                                    \
-                       strerror( errno ) );                         \
+                       strerror( GET_LAST_ERROR_NUMBER ) );                         \
               exit( 1 );                                            \
            }   /* End IF system call failed. */                     \
         } while ( false )
@@ -136,15 +189,15 @@ class socket_guard {
 	typedef enum {RDWR=0,NORD=1,NOWR=2,NORW=3,ERR=7} socket_status; /* 0000 RDWR 0001 NORD 0010 NOWR 0011 NORW 0111 ERR */
 
 	private:
-		mutable atomic<int> sock;
+		mutable atomic<SOCKET> sock;
 		mutable atomic<int> event;
 		mutable atomic<socket_status> status;
 
 	public:
-		socket_guard(int sock=INVALID_SOCKET):sock(sock),event(0),status(RDWR){
+		socket_guard(SOCKET sock=INVALID_SOCKET):sock(sock),event(0),status(RDWR){
 		};
 		socket_guard(const socket_guard& sg){
-			int oldSock;
+			SOCKET oldSock;
 			do {
 				oldSock = sg.sock; // lock-based operator= inside std::atomic<T>
 				sock = oldSock;
@@ -157,7 +210,7 @@ class socket_guard {
 		}
 		socket_guard& operator = (const socket_guard& sg){
 			assert(sock.load()==INVALID_SOCKET);
-			int oldSock;
+			SOCKET oldSock;
 			do {
 				oldSock = sg.sock; // lock-based operator= inside std::atomic<T>
 				sock = oldSock;
@@ -175,23 +228,23 @@ class socket_guard {
 		bool close(){
 			//fprintf( stderr,"Socket id: %d Closed.\n",sock.load());
 			bool result = false;
-			int oldSock;
+			SOCKET oldSock;
 			do {
 				oldSock = sock; // lock-based operator= inside std::atomic<T>
 				// lock-based function compare_exchange_weak() inside std::atomic<T>
 			} while(oldSock >= 0 && !sock.compare_exchange_weak(oldSock, -1*oldSock));
 
 			if( oldSock >= 0 ){
-				result = SYSCALL( "close", __LINE__, ::close( oldSock ) );
+				result = SYSCALL( "close", __LINE__, SOCKET_FUNC_CLOSE( oldSock ) );
 				set_status(NORW);
 			}
 			return result;
 		}
-		int get() const {
+		SOCKET get() const {
 			return (sock.load()<0)?-1*sock.load():sock.load();
 		}
-		int release(){ // its not a thread safe function
-			int tmp=sock;
+		SOCKET release(){ // its not a thread safe function
+			SOCKET tmp=sock;
 			reset();
 			return tmp;
 		}
@@ -212,6 +265,9 @@ class socket_guard {
 };
 
 class Socket {
+#if defined(OS_TYPE_WIN)
+		static WSADATA wsaData;
+#endif
 		static std::atomic<unsigned long> sockCount;
 
 		std::shared_ptr<socket_guard>	sockGuard;	// Active Socket
@@ -228,7 +284,7 @@ class Socket {
 		struct sockaddr_storage			udpSockStor;
 
 		static bool Initialize();
-		static void Finalize();
+		static bool Finalize();
 
 		bool OpenClient();
 		bool OpenServer();
@@ -264,5 +320,5 @@ class Socket {
 		operator bool () const {return static_cast<bool>(*sockGuard);}
 };
 
-#endif //_WIN_SOCKET_H_
+#endif //_POSIX_SOCKET_H_
 
