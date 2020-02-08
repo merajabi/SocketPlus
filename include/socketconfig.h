@@ -45,30 +45,32 @@ struct addrinfo {
 };
 
 */
-//#define XSTR(x) STR(x)
-//#define STR(x) #x
+#define XSTR(x) STR(x)
+#define STR(x) #x
+
+//#pragma message "The value of __unix__: " XSTR(__unix__)
+//#pragma message "The value of __linux__: " XSTR(__linux__)
+//#pragma message "The value of _WIN32: " XSTR(_WIN32)
+//#pragma message "The value of _WIN64: " XSTR(_WIN64)
+//#pragma message "The value of __CYGWIN__: " XSTR(__CYGWIN__)
+//#pragma message "The value of __CYGWIN32__: " XSTR(__CYGWIN32__)
 
 #if defined(__unix__) || defined(__linux__)
-	#define OS_TYPE_NIX
-
-#elif defined(_WIN32) || defined(_WIN64)
+	#if defined(__CYGWIN__) || defined(__CYGWIN32__)
+		#define OS_TYPE_WIN
+	#else
+		#define OS_TYPE_NIX
+	#endif
+#elif defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__) || defined(__CYGWIN32__)
 	#define OS_TYPE_WIN
-	#define WIN32_LEAN_AND_MEAN
-	//#pragma message "The value of ABC: " XSTR(_WIN32_WINNT)
-	#undef _WIN32_WINNT
-	#define _WIN32_WINNT 0x0600
 #endif 
 
-/*
-** System header files.
-*/
-//#include <errno.h>        /* errno declaration & error codes.            */
-//#include <stdio.h>        /* printf(3) et al.                            */
-//#include <stdlib.h>       /* exit(2).                                    */
-#include <string.h>       /* String manipulation & memory functions.     */
-#include <time.h>         /* time(2) & ctime(3).                         */
-#include <unistd.h>       /* getopt(3), read(2), etc.                    */
-#include <assert.h>
+#ifdef OS_TYPE_NIX
+#elif defined(OS_TYPE_WIN)
+	#define WIN32_LEAN_AND_MEAN
+	#undef _WIN32_WINNT
+	#define _WIN32_WINNT 0x0600
+#endif
 
 #ifdef OS_TYPE_NIX
 	#include <netdb.h>        /* getaddrinfo(3) et al.                       */
@@ -91,9 +93,9 @@ struct addrinfo {
 #elif defined(OS_TYPE_WIN)
 	#undef UNICODE
 
-	#include <winsock2.h>		// setsockopt sendto shutdown
 	#include <windows.h>
-	//#include <ws2def.h>			// struct addrinfo
+	#include <winsock2.h>		// setsockopt sendto shutdown
+	//#include <ws2def.h>		// struct addrinfo
 	#include <ws2tcpip.h>
 	#include <iphlpapi.h>		// if_nametoindex
  
@@ -117,6 +119,17 @@ struct addrinfo {
 	//#pragma comment (lib, "AdvApi32.lib")
 
 #endif
+
+/*
+** System header files.
+*/
+//#include <errno.h>        /* errno declaration & error codes.            */
+//#include <stdio.h>        /* printf(3) et al.                            */
+//#include <stdlib.h>       /* exit(2).                                    */
+#include <string.h>       /* String manipulation & memory functions.     */
+#include <time.h>         /* time(2) & ctime(3).                         */
+#include <unistd.h>       /* getopt(3), read(2), etc.                    */
+#include <assert.h>
 
 #endif //_POSIX_SOCKET_CONFIG_H_
 

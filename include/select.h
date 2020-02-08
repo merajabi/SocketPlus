@@ -1,5 +1,6 @@
 #ifndef _POSIX_SOCKET_SELECT_H_
 #define _POSIX_SOCKET_SELECT_H_
+#include "socketconfig.h"
 #include <map>
 #include "socket.h"
 

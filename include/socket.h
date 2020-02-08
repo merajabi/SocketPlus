@@ -115,7 +115,7 @@ class socket_guard {
 				// lock-based function compare_exchange_weak() inside std::atomic<T>
 			} while(oldSock >= 0 && !sock.compare_exchange_weak(oldSock, -1*oldSock));
 
-			if( oldSock >= 0 ){
+			if( oldSock >= 0 && oldSock != INVALID_SOCKET ){
 				result = SYSCALL( "close", __LINE__, SOCKET_FUNC_CLOSE( oldSock ) );
 				set_status(NORW);
 			}
@@ -142,7 +142,7 @@ class socket_guard {
 		int get_event(){return event;}
 		void set_status(socket_status s) { status = static_cast<socket_status>(status | s); }
 		socket_status get_status(){return status;}
-		operator bool () const {return static_cast<bool>( sock.load() >= 0 );}
+		operator bool () const {return static_cast<bool>( sock.load() >= 0 && sock.load()!=INVALID_SOCKET );}
 };
 
 class Socket {

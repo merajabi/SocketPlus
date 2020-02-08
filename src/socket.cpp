@@ -1,3 +1,5 @@
+#include "socketconfig.h"
+
 #include <iostream>
 #include <chrono>
 #include <iomanip>
@@ -389,7 +391,7 @@ socket_guard Socket::Listen() {
 		if( desc[ idx ].revents == 0 ) {								// No activity on this socket; try the next.
 			continue;
 		}
-		else if( desc[ idx ].revents == POLLIN ) {					// Network activity.  Go process it.
+		else if( desc[ idx ].revents & POLLIN ) {					// Network activity.  Go process it.
 			desc[ idx ].revents = 0;   /* Clear the returned poll events. */
 			return Accept(); //desc[ idx ].fd
 		}
@@ -820,6 +822,7 @@ void Socket::SetEvent(int e){
 	if(verbose) {
 		fprintf( stderr,"\n ******************** \n");
 		fprintf( stderr," Socket %d events start.\n",sockGuard->get());
+		fprintf( stderr," event (0x%02X).\n",e);
 		if( e & POLLIN ) {
 			fprintf( stderr," POLLIN event (0x%02X).\n",POLLIN);
 		}
